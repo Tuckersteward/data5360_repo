@@ -289,5 +289,7 @@ GROUP BY fs.store_key, ods.store_name
 
 - In order to view lineage, the dbt power user extension must be installed. Click on the Lineage tab in vscode (down by the terminal on the bottom), if you are inside the sem_claims.sql model, you should be able to see lineage for that model. View the lineage for the other files in the model as well.
 ![image](https://github.com/Tuckersteward/data5360_repo/assets/28993956/e9143b57-391f-4cac-9f06-22941b81f350)
+![image](https://github.com/Tuckersteward/data5360_repo/assets/28993956/79803da1-ea73-4e2a-9bdf-500f4f1c7ef7)
+
 
 
