@@ -68,7 +68,19 @@
     - In this file we will add all of the sources for Oliver's tables
 - Populate the code that we will use in this file below: 
 ```
+version: 2
 
+sources:
+  - name: OLIVER
+    database: cabotsteward
+    schema: OLIVER
+    tables:
+      - name: customer
+      - name: employee
+      - name: orderline
+      - name: orders
+      - name: product
+      - name: store
 ```
 
 - If you need to make any changes to your Snowflake information in your dbt project you can change it by going to your dbt profile.yml file. You may need to change the schema. 
@@ -81,7 +93,22 @@
 - Create a new file inside of the oliver directory called `oliver_dim_customer.sql`
 - Populate the code that we will use in this file below: 
 ```
+{{ config(
+    materialized = 'table',
+    schema = 'dw_oliver'
+    )
+}}
 
+
+select
+{{ dbt_utils.generate_surrogate_key(['customer_id', 'first_name']) }} as customer_key,
+email,
+state,
+last_name,
+first_name,
+customer_id,
+phone_number
+FROM {{ source('OLIVER', 'customer') }}
 ```
 
 - Save the file, after you have done that, you can go to your terminal and type `dbt run -m oliver_dim_customer` to build the model.
@@ -91,7 +118,25 @@
 - Create a new file inside of the oliver directory called `oliver_dim_date.sql`
 - Populate the code that we will use in this file below: 
 ```
+{{ config(
+    materialized = 'table',
+    schema = 'dw_oliver'
+    )
+}}
 
+with cte_date as (
+{{ dbt_date.get_date_dimension("1990-01-01", "2050-12-31") }}
+)
+
+SELECT
+date_day as date_key,
+date_day,
+day_of_week,
+month_of_year,
+month_name,
+quarter_of_year,
+year_number
+from cte_date
 ```
 
 - Save the file, after you have done that, you can go to your terminal and type `dbt run -m oliver_dim_date` to build the model. Go to Snowflake to see the newly created table!
@@ -100,7 +145,23 @@
 - Create a new file inside of the oliver directory called `oliver_dim_employee.sql`
 - Populate the code that we will use in this file below: 
 ```
+{{ config(
+    materialized = 'table',
+    schema = 'dw_oliver'
+    )
+}}
 
+
+select
+{{ dbt_utils.genearate_surrogate_key(['employee_ID', 'first_name']) }} as employee_key,
+employee_ID,
+first_name,
+last_name,
+email,
+phone_number,
+hire_date,
+position
+FROM {{ source('OLIVER', 'employee') }}
 ```
 
 - Save the file and build the model. Go to Snowflake to see the newly created table! 
@@ -111,6 +172,19 @@
 
 
 ```
+{{ config(
+    materialized = 'table',
+    schema = 'dw_oliver'
+    )
+}}
+
+
+select
+{{ dbt_utils.generate_surrogate_key(['product_id', 'product_name']) }} as product_key,
+product_id,
+product_name,
+description
+FROM {{ source('OLIVER', 'product') }}
 
 ```
 
@@ -121,7 +195,21 @@
 - Create a new file inside of the oliver directory called `oliver_dim_store.sql`
 - Populate the code that we will use in this file below: 
 ```
+{{ config(
+    materialized = 'table',
+    schema = 'dw_oliver'
+    )
+}}
 
+
+select
+{{ dbt_utils.generate_surrogate_key(['store_id', 'store_name']) }} as store_key,
+store_id,
+Store_name,
+street,
+City,
+State,
+FROM {{ source('OLIVER', 'store') }}
 
 ```
 
@@ -132,8 +220,27 @@
 - Create a new file inside of the oliver directory called `fact_sales.sql`
 - Populate the code that we will use in this file below: 
 ```
+{{ config(
+    materialized = 'table',
+    schema = 'dw_oliver'
+) }}
 
-
+SELECT
+    c.customer_key,
+    d.date_key,
+    e.employee_key,
+    s.store_key,
+    p.product_key,
+    ol.quantity,
+    o.total_amount,
+    ol.unit_price
+FROM {{ source('OLIVER', 'orders') }} o
+INNER JOIN {{ source('OLIVER', 'orderline') }} ol on o.order_id = ol.order_id
+INNER JOIN {{ ref('oliver_dim_employee') }} e ON o.employee_ID = e.employee_id 
+INNER JOIN {{ ref('oliver_dim_customer') }} c ON o.Customer_ID = c.customer_id 
+INNER JOIN {{ ref('oliver_dim_date') }} d ON o.order_date = d.date_day 
+INNER JOIN {{ ref('oliver_dim_product') }} p ON ol.product_id = p.product_id
+INNER JOIN {{ ref('oliver_dim_store') }} s ON o.store_id = s.store_id
 ```
 
 - Save the file and build the model. Go to Snowflake to see the newly created table!
@@ -145,7 +252,19 @@
 - This file contains metadata about the models you build. Hint: check out the exercise to help you create this file. 
 - Populate the code that we will use in this file below: 
 ```
+version: 2
 
+models:
+  - name: oliver_dim_customer
+    description: "Oliver Customer Dimension"
+  - name: oliver_dim_date
+    description: "Oliver Date Dimension"
+  - name: oliver_dim_employee
+    description: "Oliver Employee Dimension"
+  - name: oliver_dim_product
+    description: "Oliver Product Dimension"
+  - name: oliver_dim_store
+    description: "Oliver Store Dimension"
 ```
 
 ## Create a semantic layer model (2 points of EC!)
@@ -155,7 +274,20 @@
 - This model should use 'ref' instead of source in the from statements. This will allow dbt to build lineage dag of the model dependencies:
 - Populate the code that we will use in this file below: 
 ```
-
+{{ config(
+    materialized = 'table',
+    schema = 'dw_oliver'
+) }}
+    
+SELECT
+    ods.store_name,
+    sum(quantity * unit_price) as "Total_Sales"
+FROM {{ref('fact_sales') }} fs
+INNER JOIN {{ ref('oliver_dim_store') }} ods ON fs.store_key = ods.store_key
+GROUP BY fs.store_key, ods.store_name
 ```
 
-- In order to view lineage, the dbt power user extension must be installed. Click on the Lineage tab in vscode (down by the terminal on the bottom), if you are inside the sem_claims.sql model, you should be able to see lineage for that model. View the lineage for the other files in the model as well. 
+- In order to view lineage, the dbt power user extension must be installed. Click on the Lineage tab in vscode (down by the terminal on the bottom), if you are inside the sem_claims.sql model, you should be able to see lineage for that model. View the lineage for the other files in the model as well.
+![image](https://github.com/Tuckersteward/data5360_repo/assets/28993956/e9143b57-391f-4cac-9f06-22941b81f350)
+
+
