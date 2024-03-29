@@ -27,7 +27,6 @@ sources:
       - name: inventory
       - name: orders
       - name: order_line
-
 ```
 
 
