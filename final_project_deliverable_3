@@ -9,7 +9,7 @@
 - Right click on the folder samssubssandwhichs and create a new file. Name this file `_src_samssubssandwhichs.yml`
 - Populate the following code within _src_samssubssandwhichs.yml
 
-"""
+```
 version: 2
 
 
@@ -28,7 +28,7 @@ sources:
       - name: orders
       - name: order_line
 
-"""
+```
 
 
 - If you need to make any changes to your Snowflake information in your dbt project you can change it by going to your dbt profile.yml file. You may need to change the schema. 
